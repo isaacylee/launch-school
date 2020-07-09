@@ -2,7 +2,7 @@ def prompt(msg)
   puts ">> #{msg}"
 end
 
-def valid_input(num)
+def valid_input?(num)
   num.to_i.to_s == num && num.empty? == false && num.to_f > 0
 end
 
@@ -18,21 +18,21 @@ loop do
   loop do
     prompt("Enter loan amount:")
     principal = gets.chomp
-    break if valid_input(principal)
+    break if valid_input?(principal)
     prompt(error)
   end
   
   loop do
     prompt("Enter Annual Percentage Rate (APR):")
     interest_rate = gets.chomp
-    break if valid_input(interest_rate)
+    break if valid_input?(interest_rate)
     prompt(error)
   end
   
   loop do
     prompt("Enter loan duration (in years):")
     loan_years = gets.chomp
-    break if valid_input(loan_years)
+    break if valid_input?(loan_years)
     prompt(error)
   end
 
@@ -45,8 +45,9 @@ loop do
 
   prompt("Your monthly payment will be $#{monthly_payment.round(2)}.")
   prompt("Do you want to calculate another mortgage payment? (y/n)")
-  answer = gets.chomp
-  break unless answer.downcase == ('y')
+  calculate_again = gets.chomp
+  break unless calculate_again.downcase == ('y')
 end
 
 prompt("Goodbye!")
+
