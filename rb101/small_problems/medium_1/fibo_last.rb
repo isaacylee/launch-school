@@ -1,15 +1,8 @@
-def fibonacci(n)
-  a = 1
-  b = 1
-
-  (n - 2).times do
-    a, b = [b, a + b]
+def fibonacci_last(nth)
+  last_2 = [1, 1]
+  3.upto(nth) do
+    last_2 = [last_2.last, (last_2.first + last_2.last) % 10]
   end
 
-  b
-end
-
-def fibonacci_last(n)
-  nth_fibonacci_num = fibonacci(n)
-  nth_fibonacci_num.to_s[-1].to_i
+  last_2.last
 end
