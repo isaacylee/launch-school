@@ -8,8 +8,8 @@ WINNING_LINES = [[1, 2, 3], [4, 5, 6], [7, 8, 9]] +
                 [[1, 4, 7], [2, 5, 8], [3, 6, 9]] +
                 [[1, 5, 9], [3, 5, 7]]
 TOTAL_ROUNDS = 3
-scores = {player: 0, computer: 0}
-
+SCORES = { player: 0, computer: 0 }
+current_player = 'P'
 
 def prompt(msg)
   puts "=> #{msg}"
@@ -19,7 +19,11 @@ def indent
   " " * 15
 end
 
-# rubocop:disable Metrics/AbcSize
+def display_scores
+  puts "SCORES [Player : #{SCORES[:player]}] [Computer : #{SCORES[:computer]}]"
+end
+
+# rubocop:disable Metrics/MethodLength
 def display_board(brd)
   system 'clear'
   prompt "Player is #{PLAYER_MARKER}. Computer is #{COMPUTER_MARKER}."
@@ -38,8 +42,7 @@ def display_board(brd)
   puts "#{indent}     |     |     "
   puts ""
 end
-# rubocop:enable Metrics/AbcSize
-
+# rubocop:enable Metrics/MethodLength
 
 def initialize_board
   new_board = {}
@@ -62,29 +65,40 @@ def joinor(arr, delimiter = ', ', word = 'or')
   end
 end
 
-def player_turn!(brd)
-  square = ''
-  loop do
-    prompt "Choose a square (#{joinor(empty_squares(brd))}):"
-    square = gets.chomp.to_i
-    break if empty_squares(brd).include?(square)
-    prompt "Sorry, that's not a valid choice."
-  end
-
-  brd[square] = PLAYER_MARKER
-end
-
-def neutral_computer_turn!(brd)
-  square = empty_squares(brd).sample
-  brd[square] = COMPUTER_MARKER
-end
-
 def board_full?(brd)
   empty_squares(brd).empty?
 end
 
 def someone_won?(brd)
   !!detect_winner(brd)
+end
+
+def place_piece!(board, current_player)
+  current_player == "P" ? player_turn!(board) : computer_turn!(board)
+end
+
+def alternate_player(player)
+  player == "P" ? "C" : "P"
+end
+
+def integer?(num)
+  num.to_s == num.to_i.to_s
+end
+
+def player_turn!(brd)
+  square = ''
+  loop do
+    prompt "Choose a square (#{joinor(empty_squares(brd))}):"
+    square = gets.chomp
+    break if empty_squares(brd).include?(square.to_i) && integer?(square)
+    prompt "Sorry, that's not a valid choice."
+  end
+  brd[square.to_i] = PLAYER_MARKER
+end
+
+def neutral_computer_turn!(brd)
+  square = empty_squares(brd).sample
+  brd[square] = COMPUTER_MARKER
 end
 
 def computer_turn!(brd)
@@ -166,24 +180,38 @@ loop do
   loop do
     board = initialize_board
 
+    display_board(board)
+    display_scores
+
+    loop do
+      prompt "Pick who goes first: Player (P) or Computer (C)"
+      answer = gets.chomp.upcase
+      if answer == 'P' || answer == 'C'
+        current_player = answer
+        break
+      else
+        puts "Invalid choice, pick 'P' or 'C'"
+      end
+    end
+
     loop do
       display_board(board)
-      puts "SCORES | Player : #{scores[:player]} | Computer : #{scores[:computer]} |"
-      player_turn!(board)
-      break if someone_won?(board) || board_full?(board)
-      computer_turn!(board)
+      display_scores
+
+      place_piece!(board, current_player)
+      current_player = alternate_player(current_player)
       break if someone_won?(board) || board_full?(board)
     end
 
     if detect_winner(board) == 'Player'
-      scores[:player] += 1
+      SCORES[:player] += 1
     elsif detect_winner(board) == 'Computer'
-      scores[:computer] += 1
+      SCORES[:computer] += 1
     end
-    break if scores[:player] == TOTAL_ROUNDS || scores[:computer] == TOTAL_ROUNDS
+    break if SCORES.values.include?(TOTAL_ROUNDS)
 
     display_board(board)
-    puts "SCORES | Player : #{scores[:player]} | Computer : #{scores[:computer]} |"
+    display_scores
     if someone_won?(board)
       prompt "#{detect_winner(board)} won!"
     else
@@ -192,21 +220,29 @@ loop do
     prompt "Press 'Enter' to continue."
     answer = gets.chomp
     next if answer
-    
   end
-  
+
   display_board(board)
-  puts "SCORES | Player : #{scores[:player]} | Computer : #{scores[:computer]} |"
-  if scores[:player] == TOTAL_ROUNDS
+  display_scores
+  if SCORES[:player] == TOTAL_ROUNDS
     prompt "Player wins!"
   else
     prompt "Computer wins!"
   end
 
-  prompt "Play again? (y/n)"
-  play_again = gets.chomp.downcase
+  play_again = ""
+
+  loop do
+    prompt "Play again? (y/n)"
+    play_again = gets.chomp.downcase
+    break if play_again == 'n' || play_again == 'y'
+    prompt "Invalid choice, select 'y' or 'n'"
+  end
+
   break if play_again == 'n'
-  scores.each { |_, score| score = 0 }
+
+  SCORES[:player] = 0
+  SCORES[:computer] = 0
 end
 
 prompt "Thanks for playing!"

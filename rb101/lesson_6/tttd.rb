@@ -1,36 +1,43 @@
 require 'pry'
 require 'pry-byebug'
 
+INITIAL_MARKER = ' '
 PLAYER_MARKER = 'X'
 COMPUTER_MARKER = 'O'
 WINNING_LINES = [[1, 2, 3], [4, 5, 6], [7, 8, 9]] +
                 [[1, 4, 7], [2, 5, 8], [3, 6, 9]] +
                 [[1, 5, 9], [3, 5, 7]]
 TOTAL_ROUNDS = 3
+
 scores = {player: 0, computer: 0}
+TURN_SWITCH = 1
 
 
 def prompt(msg)
   puts "=> #{msg}"
 end
 
+def indent
+  " " * 15
+end
+
 # rubocop:disable Metrics/AbcSize
 def display_board(brd)
   system 'clear'
-  puts "Player is #{PLAYER_MARKER}. Computer is #{COMPUTER_MARKER}."
-  puts "First player to #{TOTAL_ROUNDS} wins!"
+  prompt "Player is #{PLAYER_MARKER}. Computer is #{COMPUTER_MARKER}."
+  prompt "First player to #{TOTAL_ROUNDS} wins!"
   puts ""
-  puts "     |     |"
-  puts "  #{brd[1]}  |  #{brd[2]}  |  #{brd[3]}"
-  puts "     |     |"
-  puts "-----+-----+-----"
-  puts "     |     |"
-  puts "  #{brd[4]}  |  #{brd[5]}  |  #{brd[6]}"
-  puts "     |     |"
-  puts "-----+-----+-----"
-  puts "     |     |"
-  puts "  #{brd[7]}  |  #{brd[8]}  |  #{brd[9]}"
-  puts "     |     |"
+  puts "#{indent}     |     |     "
+  puts "#{indent}  #{brd[1]}  |  #{brd[2]}  |  #{brd[3]}"
+  puts "#{indent}     |     |     "
+  puts "#{indent}-----+-----+-----"
+  puts "#{indent}     |     |     "
+  puts "#{indent}  #{brd[4]}  |  #{brd[5]}  |  #{brd[6]}"
+  puts "#{indent}     |     |     "
+  puts "#{indent}-----+-----+-----"
+  puts "#{indent}     |     |     "
+  puts "#{indent}  #{brd[7]}  |  #{brd[8]}  |  #{brd[9]}"
+  puts "#{indent}     |     |     "
   puts ""
 end
 # rubocop:enable Metrics/AbcSize
@@ -38,12 +45,12 @@ end
 
 def initialize_board
   new_board = {}
-  (1..9).each { |num| new_board[num] = num }
+  (1..9).each { |num| new_board[num] = INITIAL_MARKER }
   new_board
 end
 
 def empty_squares(brd)
-  brd.keys.select { |num| brd[num].to_s.to_i != 0 }
+  brd.keys.select { |num| brd[num] == INITIAL_MARKER }
 end
 
 def joinor(arr, delimiter = ', ', word = 'or')
@@ -65,7 +72,7 @@ def player_turn!(brd)
     break if empty_squares(brd).include?(square)
     prompt "Sorry, that's not a valid choice."
   end
-
+  TURN_SWITCH *= -1
   brd[square] = PLAYER_MARKER
 end
 
@@ -92,13 +99,14 @@ def computer_turn!(brd)
   else
     neutral_computer_turn!(brd)
   end
+  TURN_SWITCH *= -1
 end
 
 def defensive_computer_turn!(brd)
   defend_square = []
   WINNING_LINES.each do |line|
     if brd.values_at(*line).count(PLAYER_MARKER) == 2
-      defend_square << brd.select { |k, v| line.include?(k) && v.to_s.to_i != 0 }.keys.first
+      defend_square << brd.select { |k, v| line.include?(k) && v == INITIAL_MARKER }.keys.first
     end
   end
   square = defend_square.compact.sample
@@ -109,7 +117,7 @@ def offensive_computer_turn!(brd)
   winning_square = []
   WINNING_LINES.each do |line|
     if brd.values_at(*line).count(COMPUTER_MARKER) == 2
-      winning_square << brd.select { |k, v| line.include?(k) && v.to_s.to_i != 0 }.keys.first
+      winning_square << brd.select { |k, v| line.include?(k) && v == INITIAL_MARKER }.keys.first
     end
   end
   square = winning_square.compact.sample
@@ -164,9 +172,7 @@ loop do
     loop do
       display_board(board)
       puts "SCORES | Player : #{scores[:player]} | Computer : #{scores[:computer]} |"
-      player_turn!(board)
-      break if someone_won?(board) || board_full?(board)
-      computer_turn!(board)
+      TURN_SWITCH > 0 ? player_turn!(board) : computer_turn!(board)
       break if someone_won?(board) || board_full?(board)
     end
 
