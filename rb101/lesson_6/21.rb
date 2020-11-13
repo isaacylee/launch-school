@@ -255,7 +255,7 @@ loop do
     end
     prompt("Press 'Enter' to continue...")
     continue = gets.chomp
-    display_gameover(scores)
+    display_gameover(scores) if continue
     play_again? ? next : break
   end
 end
