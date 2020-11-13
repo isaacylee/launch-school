@@ -253,6 +253,8 @@ loop do
       continue = gets.chomp
       next if continue
     end
+    prompt("Press 'Enter' to continue...")
+    continue = gets.chomp
     display_gameover(scores)
     play_again? ? next : break
   end
