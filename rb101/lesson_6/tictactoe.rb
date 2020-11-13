@@ -23,7 +23,7 @@ def display_scores
   puts "SCORES [Player : #{SCORES[:player]}] [Computer : #{SCORES[:computer]}]"
 end
 
-# rubocop:disable Metrics/MethodLength
+# rubocop:disable Metrics/MethodLength, Metrics/AbcSize
 def display_board(brd)
   system 'clear'
   prompt "Player is #{PLAYER_MARKER}. Computer is #{COMPUTER_MARKER}."
@@ -42,7 +42,7 @@ def display_board(brd)
   puts "#{indent}     |     |     "
   puts ""
 end
-# rubocop:enable Metrics/MethodLength
+# rubocop:enable Metrics/MethodLength, Metrics/AbcSize
 
 def initialize_board
   new_board = {}
@@ -114,24 +114,26 @@ def computer_turn!(brd)
 end
 
 def defensive_computer_turn!(brd)
-  defend_square = []
+  defensive_moves = []
   WINNING_LINES.each do |line|
     if brd.values_at(*line).count(PLAYER_MARKER) == 2
-      defend_square << brd.select { |k, v| line.include?(k) && v == INITIAL_MARKER }.keys.first
+      def_square = brd.select { |k, v| line.include?(k) && v == INITIAL_MARKER }
+      defensive_moves << def_square.keys.first
     end
   end
-  square = defend_square.compact.sample
+  square = defensive_moves.compact.sample
   brd[square] = COMPUTER_MARKER
 end
 
 def offensive_computer_turn!(brd)
-  winning_square = []
+  winning_squares = []
   WINNING_LINES.each do |line|
     if brd.values_at(*line).count(COMPUTER_MARKER) == 2
-      winning_square << brd.select { |k, v| line.include?(k) && v == INITIAL_MARKER }.keys.first
+      win_square = brd.select { |k, v| line.include?(k) && v == INITIAL_MARKER }
+      winning_squares << win_square.keys.first
     end
   end
-  square = winning_square.compact.sample
+  square = winning_squares.compact.sample
   brd[square] = COMPUTER_MARKER
 end
 

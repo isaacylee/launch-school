@@ -1,5 +1,4 @@
-require 'pry'
-require 'pry-byebug'
+# CONSTANTS
 
 CARD_SUITS = %w(♠ ♥ ♣ ♦)
 
@@ -11,6 +10,8 @@ CARD_VALUES = {
 }
 
 WINNING_NUMBER = 21
+
+# METHODS
 
 def join(arr, delimiter = '] [')
   case arr.size
@@ -151,6 +152,7 @@ def play_again?
   answer.start_with?('y')
 end
 
+# GAME LOGIC
 loop do
   system 'clear'
   display_menu
