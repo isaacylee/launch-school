@@ -43,28 +43,38 @@ def empty_lines
 end
 
 def shuffle_deck
-  dck = CARD_VALUES.keys.product(CARD_SUITS).map(&:join)
+  dck = []
+  CARD_SUITS.each do |suit|
+    CARD_VALUES.each do |card, value|
+        dck << {card: card, suit: suit, value: value}
+    end
+  end
   dck.shuffle!
 end
 
+def display_string(card)
+  "#{card[:card]}#{card[:suit]}"
+end
+
 def display_player(hand, total)
-  sorted_hand = hand.clone
-  sorted_hand.sort_by! { |card| CARD_VALUES[card[0..card.size - 2]] }
-  puts "You have:   #{join(sorted_hand)}  =>  #{total}"
+  sorted_hand = hand.clone.sort_by! { |card| card[:value] }
+  display_strings = sorted_hand.map { |card| display_string(card) }
+  puts "You have:   #{join(display_strings)}  =>  #{total}"
 end
 
 def reveal_dealer(hand, total)
-  puts "Dealer has: #{join(hand)}  =>  #{total}"
+  display_strings = hand.map { |card| display_string(card) }
+  puts "Dealer has: #{join(display_strings)}  =>  #{total}"
 end
 
 def display_dealer(hand)
-  puts "Dealer has: [#{hand[0]}] [?]"
+  puts "Dealer has: [#{display_string(hand[0])}] [?]"
 end
 
 def cards_total(hand)
-  value = hand.map { |card| CARD_VALUES[card[0..card.size - 2]] }.reduce(0, :+)
-  if hand.map { |card| card[0] }.include?('A')
-    hand.map { |card| card[0] }.count('A').times do
+  value = hand.map { |card| card[:value] }.sum
+  if hand.any? { |card| card[:card] == 'A' }
+    hand.map { |card| card[:card] }.count('A').times do
       value -= 10 if value > WINNING_NUMBER
     end
   end
@@ -75,32 +85,43 @@ def busted?(total)
   total > WINNING_NUMBER
 end
 
+def blackjack?(total)
+  total == WINNING_NUMBER
+end
+
+def player_won?(player_total, dealer_total)
+    busted?(dealer_total) || !busted?(player_total) && player_total > dealer_total
+end
+
+def tie?(player_total, dealer_total)
+    player_total == dealer_total
+end
+
 # rubocop:disable Metrics/AbcSize, Metrics/CyclomaticComplexity, Metrics/PerceivedComplexity
-def round_outcome(p_hand, p_status, p_total, d_total)
+def round_outcome(player_hand, p_status, player_total, dealer_total)
   if p_status.nil?
     prompt("Dealer has dealt cards.")
-  elsif p_status == '1' && !busted?(p_total)
-    prompt("You drew: [#{p_hand.last}].")
-  elsif busted?(p_total)
+  elsif p_status == '1' && !busted?(player_total)
+    new_card = player_hand.last
+    prompt("You drew: [#{display_string(new_card)}].")
+  elsif busted?(player_total)
     prompt('Bust! You lose!')
-  elsif p_total == WINNING_NUMBER
+  elsif blackjack?(player_total)
     prompt('Blackjack! You win!')
-  elsif busted?(d_total) || p_total > d_total
+  elsif player_won?(player_total, dealer_total)
     prompt('You win!')
-  elsif p_total == d_total
+  elsif tie?(player_total, dealer_total)
     prompt("It's a tie!")
   else
     prompt('Dealer wins!')
   end
 end
 
-def score_keeper(p_total, d_total, scores)
-  if busted?(p_total)
-    scores[:dealer] += 1
-  elsif !busted?(p_total) && !busted?(d_total) && d_total > p_total
-    scores[:dealer] += 1
-  elsif p_total == WINNING_NUMBER || busted?(d_total) || p_total > d_total
+def score_keeper(player_total, dealer_total, scores)
+  if player_won?(player_total, dealer_total) || blackjack?(player_total)
     scores[:player] += 1
+  elsif !tie?(player_total, dealer_total)
+    scores[:dealer] += 1
   end
 end
 # rubocop:enable Metrics/AbcSize, Metrics/CyclomaticComplexity, Metrics/PerceivedComplexity
@@ -119,15 +140,15 @@ def display_scores(scores)
   empty_lines
 end
 
-def display_table(p_hand, d_hand, p_total)
-  display_dealer(d_hand)
-  display_player(p_hand, p_total)
+def display_table(player_hand, dealer_hand, player_total)
+  display_dealer(dealer_hand)
+  display_player(player_hand, player_total)
   empty_lines
 end
 
-def reveal_table(p_hand, d_hand, p_total, d_total)
-  reveal_dealer(d_hand, d_total)
-  display_player(p_hand, p_total)
+def reveal_table(player_hand, dealer_hand, player_total, dealer_total)
+  reveal_dealer(dealer_hand, dealer_total)
+  display_player(player_hand, player_total)
   empty_lines
 end
 
@@ -188,28 +209,28 @@ loop do
     loop do
       deck = shuffle_deck
 
-      p_hand = []
-      d_hand = []
+      player_hand = []
+      dealer_hand = []
       p_status = nil
 
       2.times do
-        p_hand << deck.pop
-        d_hand << deck.pop
+        player_hand << deck.pop
+        dealer_hand << deck.pop
       end
 
-      p_total = cards_total(p_hand)
-      d_total = cards_total(d_hand)
+      player_total = cards_total(player_hand)
+      dealer_total = cards_total(dealer_hand)
 
       display_scores(scores)
-      display_table(p_hand, d_hand, p_total)
-      round_outcome(p_hand, p_status, p_total, d_total)
+      display_table(player_hand, dealer_hand, player_total)
+      round_outcome(player_hand, p_status, player_total, dealer_total)
 
       loop do
         display_scores(scores)
-        display_table(p_hand, d_hand, p_total)
-        round_outcome(p_hand, p_status, p_total, d_total)
+        display_table(player_hand, dealer_hand, player_total)
+        round_outcome(player_hand, p_status, player_total, dealer_total)
 
-        break if busted?(p_total)
+        break if busted?(player_total)
         loop do
           prompt("Choose: (1) HIT or (2) STAY")
           p_status = gets.chomp.downcase
@@ -217,16 +238,16 @@ loop do
           prompt("Error! Invalid input.")
         end
         break if p_status == '2'
-        p_hand << deck.pop
-        p_total = cards_total(p_hand)
+        player_hand << deck.pop
+        player_total = cards_total(player_hand)
       end
 
-      if busted?(p_total)
-        score_keeper(p_total, d_total, scores)
+      if busted?(player_total)
+        score_keeper(player_total, dealer_total, scores)
 
         display_scores(scores)
-        reveal_table(p_hand, d_hand, p_total, d_total)
-        round_outcome(p_hand, p_status, p_total, d_total)
+        reveal_table(player_hand, dealer_hand, player_total, dealer_total)
+        round_outcome(player_hand, p_status, player_total, dealer_total)
 
         break if scores.values.include?(5)
 
@@ -237,15 +258,15 @@ loop do
         puts "You chose to stay!"
       end
 
-      until d_total >= (WINNING_NUMBER * 0.85).floor || busted?(d_total)
-        d_hand << deck.pop
-        d_total = cards_total(d_hand)
+      until dealer_total >= (WINNING_NUMBER * 0.85).floor || busted?(dealer_total)
+        dealer_hand << deck.pop
+        dealer_total = cards_total(dealer_hand)
       end
 
-      score_keeper(p_total, d_total, scores)
+      score_keeper(player_total, dealer_total, scores)
       display_scores(scores)
-      reveal_table(p_hand, d_hand, p_total, d_total)
-      round_outcome(p_hand, p_status, p_total, d_total)
+      reveal_table(player_hand, dealer_hand, player_total, dealer_total)
+      round_outcome(player_hand, p_status, player_total, dealer_total)
 
       break if scores.values.include?(5)
 
