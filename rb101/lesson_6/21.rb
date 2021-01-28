@@ -10,6 +10,7 @@ CARD_VALUES = {
 }
 
 WINNING_NUMBER = 21
+DEAL_TO = (WINNING_NUMBER * 0.85).floor
 
 # METHODS
 
@@ -90,11 +91,11 @@ def blackjack?(total)
 end
 
 def player_won?(player_total, dealer_total)
-    busted?(dealer_total) || !busted?(player_total) && player_total > dealer_total
+  busted?(dealer_total) || !busted?(player_total) && player_total > dealer_total
 end
 
 def tie?(player_total, dealer_total)
-    player_total == dealer_total
+  player_total == dealer_total
 end
 
 # rubocop:disable Metrics/AbcSize, Metrics/CyclomaticComplexity, Metrics/PerceivedComplexity
@@ -258,7 +259,7 @@ loop do
         puts "You chose to stay!"
       end
 
-      until dealer_total >= (WINNING_NUMBER * 0.85).floor || busted?(dealer_total)
+      until dealer_total >= DEAL_TO || busted?(dealer_total)
         dealer_hand << deck.pop
         dealer_total = cards_total(dealer_hand)
       end

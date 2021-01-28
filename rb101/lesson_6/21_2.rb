@@ -1,212 +1,257 @@
 require 'pry'
-require 'pry-byebug'
-
-CARD_SUITS = %w(♠ ♥ ♣ ♦)
-
-CARD_VALUES = {
-  '2' => 2, '3' => 3, '4' => 4, '5' => 5,
-  '6' => 6, '7' => 7, '8' => 8, '9' => 9,
-  '10' => 10, 'J' => 10, 'Q' => 10, 'K' => 10,
-  'A' => 11
-}
-
-def join(arr, delimiter = '] [')
-  case arr.size
-  when 0 then ''
-  when 1 then "[#{arr.first}]"
-  else        "[#{arr.join(delimiter)}]"
-  end
-end
-
-def shuffle_deck
-  dck = CARD_VALUES.keys.product(CARD_SUITS).map{ |card| card.join }
-  dck.shuffle!
-end
-
 def prompt(msg)
-  puts ">> #{msg}"
+  puts "=> #{msg}"
 end
 
-def empty_lines
-  puts ''
-  puts ''
+def opening
+  system 'clear'
+  prompt "Welcome to 'Something 1', we are playing to #{WIN_NUM}."
+  prompt "The first player to reach 5 hands will be the winner."
+  prompt "Press enter to deal the first hand!"
+  gets
 end
 
-def display_player(hand, total)
-  sorted_hand = hand.clone
-  sorted_hand.sort_by! { |card| CARD_VALUES[card[0..card.size-2]] }
-  puts "You have:   #{join(sorted_hand)}  =>  #{total}"
-end
+CARDS = [
+  { 'Ace' => 1 },
+  { 'Two' => 2 },
+  { 'Three' => 3 },
+  { 'Four' => 4 },
+  { 'Five' => 5 },
+  { 'Six' => 6 },
+  { 'Seven' => 7 },
+  { 'Eight' => 8 },
+  { 'Nine' => 9 },
+  { 'Ten' => 10 },
+  { 'Jack' => 10 },
+  { 'Queen' => 10 },
+  { 'King' => 10 }
+]
 
-def reveal_dealer(hand, total)
-  puts "Dealer has: #{join(hand)}  =>  #{total}"
-end
+SUITS = ['Clubs', 'Diamonds', 'Hearts', 'Spades']
 
-def display_dealer(hand)
-  puts "Dealer has: [#{hand[0]}] [?]"
-end
-
-def cards_total(hand)
-  value = hand.map { |card| CARD_VALUES[card[0..card.size-2]] }.reduce(0, :+)
-  if hand.map{ |card| card[0] }.include?('A')
-    hand.map { |card| card[0] }.count('A').times do
-      value -= 10 if value > 21
+def new_deck(deck)
+  new_deck = []
+  SUITS.each do |suit|
+    CARDS.each do |card|
+      new_deck << { suit: suit, card: card.keys[0], score: card.values[0] }
     end
   end
-  value 
+  new_deck.shuffle!
+  deck.replace(new_deck)
 end
 
-def busted?(total)
-  total > 21 
-end
-
-def round_outcome(p_hand, p_status, p_total, d_total, scores)
-  case
-  when p_status == nil
-    prompt("Dealer has dealt cards.")
-  when p_status == '1' && !busted?(p_total)
-    prompt("You drew: [#{p_hand.last}].")
-  when busted?(p_total)
-    prompt('Bust! You lose!')
-  when p_total == 21
-    prompt('Blackjack! You win!')
-  when busted?(d_total) || p_total > d_total
-    prompt('You win!')
-  when p_total == d_total
-    prompt("It's a tie!")
-  else
-    prompt('Dealer wins!')
+def play_card_dealer(deck, hand, score)
+  if score.sum < BREAK_NUM
+    hand << deck.shift
+    optimize_score(hand, score)
   end
 end
 
-def score_keeper(p_total, d_total, scores)
-  case
-  when busted?(p_total) || !busted?(p_total) && !busted?(d_total) && d_total > p_total
-    scores[:dealer] += 1
-  when p_total == 21 || busted?(d_total) || p_total > d_total
-    scores[:player] += 1
-  else
+def play_card_player(deck, hand, score)
+  hand << deck.shift
+  optimize_score(hand, score)
+end
+
+def display_hand(hand)
+  hand.each do |h|
+    puts h[:card].center(10)
+    puts "of".center(10)
+    puts h[:suit].center(10)
+    puts "----------"
   end
 end
 
-def game_outcome(scores)
-  if scores[:player] == 5
-    puts "YOU WON!!".center(27)
+def display_showing(dhand, phand)
+  system 'clear'
+  showing = dhand.drop(1)
+  prompt "Dealer's Hand:"
+  puts "----------"
+  puts "Face Down".center(10)
+  puts "----------"
+  display_hand(showing)
+  prompt "Player's Hand:"
+  display_hand(phand)
+end
+
+def display_table(dhand, phand)
+  system 'clear'
+  prompt "Dealer's Hand:"
+  display_hand(dhand)
+  prompt "Player's Hand:"
+  display_hand(phand)
+end
+
+def one_or_eleven(h, optimal_card_values)
+  if optimal_card_values.sum > (WIN_NUM - 11)
+    h[:score]
   else
-    puts "DEALER WON..".center(27)
+    h[:score] + 10
   end
 end
 
-def display_scores(scores)
-  puts "  Player: #{scores[:player]}  |  Dealer: #{scores[:dealer]}".center(27)
+def ace?(h, optimal_card_values)
+  if h[:card] == 'Ace'
+    one_or_eleven(h, optimal_card_values)
+  else
+    h[:score]
+  end
 end
 
-def display_screen(p_hand, d_hand, p_status, p_total, d_total, scores)
-  system 'clear'
-  display_scores(scores)
-  empty_lines
-  display_dealer(d_hand)
-  display_player(p_hand, p_total)
-  empty_lines
-  round_outcome(p_hand, p_status, p_total, d_total, scores)
+def optimize_score(hand, score)
+  optimal_card_values = []
+  hand.sort_by { |h| h[:score] }.reverse.each do |h|
+    optimal_card_values << ace?(h, optimal_card_values)
+  end
+  score.replace(optimal_card_values)
 end
 
-def round_display_screen(p_hand, d_hand, p_status, p_total, d_total, scores)
-  system 'clear'
-  display_scores(scores)
-  empty_lines
-  reveal_dealer(d_hand, d_total)
-  display_player(p_hand, p_total)
-  empty_lines
-  round_outcome(p_hand, p_status, p_total, d_total, scores)
+def hit_stay(dscore, pscore)
+  if busted?(dscore, pscore)
+    answer = 's'
+  else
+    loop do
+      prompt "Hit or Stay? (h/s)"
+      answer = gets.chomp.downcase
+      break if answer.start_with?("h", "s")
+      prompt "That's not a valid choice."
+    end
+  end
+  answer
 end
 
-def game_display_screen(scores)
-  system 'clear'
-  display_scores(scores)
-  empty_lines
-  puts "GAME    ".center(26)
-  puts "    OVER".center(26)
-  empty_lines
-  game_outcome(scores)
-  empty_lines
+def busted?(dealer, player)
+  if dealer.sum > WIN_NUM && player.sum > WIN_NUM
+    "Both Hands Busted!"
+  elsif player.sum > WIN_NUM
+    "Player Busted!"
+  elsif dealer.sum > WIN_NUM
+    "Dealer Busted!"
+  end
+end
+
+def choose_winner(dscore, pscore)
+  winner = nil
+  if busted?(dscore, pscore)
+    prompt busted?(dscore, pscore)
+    winner = busted?(dscore, pscore)
+  elsif dscore.sum > pscore.sum
+    prompt "Dealer Wins!"
+    winner = "Dealer"
+  elsif pscore.sum > dscore.sum
+    prompt "Player Wins!"
+    winner = "Player"
+  else
+    prompt "It's a tie!"
+  end
+  winner
+end
+
+def display_scores(dscore, pscore)
+  prompt "Dealer's Score is #{dscore.sum}"
+  prompt "Player's Score is #{pscore.sum}"
+end
+
+def keep_score(dscore, pscore, overall_score)
+  case choose_winner(dscore, pscore)
+  when "Dealer Busted!"
+    overall_score['Player'] += 1
+  when "Player"
+    overall_score['Player'] += 1
+  when "Player Busted!"
+    overall_score['Dealer'] += 1
+  when "Dealer"
+    overall_score['Dealer'] += 1
+  end
+  hands_won(overall_score)
+end
+
+def hands_won(overall_score)
+  prompt "Dealer has won #{overall_score['Dealer']} hand(s)"
+  prompt "Player has won #{overall_score['Player']} hand(s)"
+end
+
+def play_to_five(overall_score)
+  winner = nil
+  if overall_score.values.include?(5)
+    overall_score.select do |k, v|
+      winner = k if v == 5
+    end
+    prompt "Game over! #{winner} was the first to win five hands!"
+  end
+  winner
 end
 
 def play_again?
-  answer = nil
-  loop do 
-    prompt('Play again? (Y/N)')
-    answer = gets.chomp.downcase
-    break if ['y', 'n'].include?(answer)
-    prompt('Invalid input.')
-  end
-  answer.start_with?('y')
-end
-  
-loop do
-  scores = {player: 0, dealer: 0}
+  prompt "Would you like to play again? (y/n)"
+  answer = gets.chomp.downcase
   loop do
-    deck = shuffle_deck
-    
-    p_hand = []
-    d_hand = []
-    p_status = nil
-
-    2.times do
-      p_hand << deck.pop
-      d_hand << deck.pop
+    if answer.start_with?('n') || answer.start_with?('y')
+      break
+    else
+      prompt "That's not a valid choice. Please pick y or n."
+      answer = gets.chomp.downcase
     end
+  end
+  answer
+end
 
-    p_total = cards_total(p_hand)
-    d_total = cards_total(d_hand)
+deck = []
+WIN_NUM = 21
+BREAK_NUM = (WIN_NUM - 4)
 
-    display_screen(p_hand, d_hand, p_status, p_total, d_total, scores)
+loop do
+  overall_score = { "Player" => 0, "Dealer" => 0 }
+
+  opening
+
+  loop do
+    new_deck(deck)
+    players_hand = []
+    players_score = []
+    dealer_hand = []
+    dealer_score = []
 
     loop do
-      display_screen(p_hand, d_hand, p_status, p_total, d_total, scores)
-      break if busted?(p_total)
       loop do
-        prompt("Choose: (1) HIT or (2) STAY")
-        p_status = gets.chomp.downcase
-        break if ['1', '2'].include?(p_status)
-        prompt("Error! Invalid input.")
+        break if deck.count <= 48
+        system 'clear'
+        play_card_dealer(deck, dealer_hand, dealer_score)
+        play_card_player(deck, players_hand, players_score)
       end
-      break if p_status == '2'
-      p_hand << deck.pop
-      p_total = cards_total(p_hand)
+
+      display_showing(dealer_hand, players_hand)
+      prompt "Player's score is #{players_score.sum}"
+      hands_won(overall_score)
+
+      loop do
+        h_or_s = hit_stay(dealer_score, players_score)
+        if h_or_s.start_with?('s')
+          break if dealer_score.sum >= BREAK_NUM
+          play_card_dealer(deck, dealer_hand, dealer_score)
+        elsif h_or_s.start_with?('h')
+          play_card_dealer(deck, dealer_hand, dealer_score)
+          play_card_player(deck, players_hand, players_score)
+        end
+        break if busted?(dealer_score, players_score) &&
+                 dealer_score.sum >= BREAK_NUM
+        display_showing(dealer_hand, players_hand)
+        prompt "Player's score is #{players_score.sum}"
+        hands_won(overall_score)
+      end
+
+      display_table(dealer_hand, players_hand)
+      display_scores(dealer_score, players_score)
+      keep_score(dealer_score, players_score, overall_score)
+      break
     end
 
-    if busted?(p_total)
-      score_keeper(p_total, d_total, scores)
-      round_display_screen(p_hand, d_hand, p_status, p_total, d_total, scores)
-      break if scores.values.include?(5)
-
-      prompt("Press 'Enter' to continue...")
-      continue = gets.chomp
-      next if continue
-    else
-      puts "You chose to stay!"
-    end
-
-    until d_total >= 17 || busted?(d_total)
-      d_hand << deck.pop
-      d_total = cards_total(d_hand)
-    end
-
-    score_keeper(p_total, d_total, scores)
-    round_display_screen(p_hand, d_hand, p_status, p_total, d_total, scores)
-
-    break if scores.values.include?(5)
-
-    prompt("Press 'Enter' to continue...")
-    continue = gets.chomp
-    next if continue
-    
+    break if play_to_five(overall_score)
+    prompt "Press enter to deal the next hand!"
+    gets
   end
-  game_display_screen(scores)
-  play_again? ? next : break
+
+  if play_again?.start_with?('n')
+    prompt "Thanks for playing! Good bye."
+    break
+  end
 end
-
-prompt('Thanks for playing!')
-
-
